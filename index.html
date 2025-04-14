@@ -3,12 +3,289 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Triangle Forming Animation</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Growing Tree Animation (Debugged)</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden; /* Hide scrollbars */
+            background-color: black; /* Set background to black */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        canvas {
+            display: block;
+            /* Optional: border for the canvas */
+            /* border: 1px solid #333;  */
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(50, 50, 50, 0.7); /* Slightly darker semi-transparent */
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+        }
+        #controls p {
+            margin: 0 0 10px 0;
+            font-weight: bold;
+        }
+        #controls button {
+            padding: 10px 18px; /* Larger padding */
+            margin-top: 10px;
+            cursor: pointer;
+            background: linear-gradient(to bottom, #6a6a6a, #4a4a4a); /* Gradient background */
+            color: white;
+            border: 1px solid #333; /* Subtle border */
+            border-radius: 5px;
+            font-size: 1em;
+            transition: background 0.2s ease; /* Smooth hover effect */
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        #controls button:hover {
+            background: linear-gradient(to bottom, #7a7a7a, #5a5a5a);
+        }
+         #controls button:active {
+             background: linear-gradient(to bottom, #5a5a5a, #404040);
+             box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+         }
+    </style>
 </head>
 <body>
-    <canvas id="triangleCanvas"></canvas>
-    <script src="script.js"></script>
+    <canvas id="treeCanvas"></canvas>
+
+    <div id="controls">
+        <p>Tree Animation</p>
+        <button id="restartButton">Restart Animation</button>
+    </div>
+
+    <script>
+        // Get canvas and context
+        const canvas = document.getElementById('treeCanvas');
+        const ctx = canvas.getContext('2d');
+        const restartButton = document.getElementById('restartButton');
+
+        // --- Configuration ---
+        const BRANCH_COLOR = '#8B4513'; // Brown color for branches
+        const LEAF_COLORS = ['#FF69B4', '#9370DB']; // Pink (DeepPink) and Purple (MediumPurple)
+        const MAX_DEPTH = 9; // Maximum recursion depth for branches
+        const INITIAL_BRANCH_LENGTH_FACTOR = 0.15; // Relative to canvas height
+        const BRANCH_WIDTH_FACTOR = 0.7; // How much thinner branches get
+        const BRANCH_LENGTH_FACTOR = 0.8; // How much shorter branches get
+        const ANGLE_VARIATION = 0.6; // Radians (approx 35 degrees) - Increased variation
+        const LEAF_SPAWN_PROBABILITY_INCREASE = 0.06; // How much leaf spawn chance increases per level
+        const INITIAL_LEAF_SPAWN_PROBABILITY = 0.05; // Start lower
+        const HEART_SIZE = 5;
+        const ELEMENTS_PER_SECOND = 100; // Target number of elements (branches/leaves) to draw per second
+
+        let animationFrameId = null;
+        let branchesToDraw = [];
+        let leavesToDraw = [];
+        let drawingInProgress = false;
+        let totalElements = 0;
+        let elementsDrawn = 0;
+        let timeAccumulator = 0;
+        let lastTimestamp = 0;
+
+        // --- Canvas Setup ---
+        function resizeCanvas() {
+            canvas.width = window.innerWidth; // Use full width
+            canvas.height = window.innerHeight; // Use full height
+            // Restart animation on resize to redraw correctly
+            startAnimation();
+        }
+
+        // --- Drawing Functions ---
+
+        // Function to draw a single branch segment
+        function drawBranch(branch) {
+            ctx.beginPath();
+            ctx.moveTo(branch.x1, branch.y1);
+            ctx.lineTo(branch.x2, branch.y2);
+            ctx.strokeStyle = BRANCH_COLOR;
+            ctx.lineWidth = Math.max(0.5, branch.width); // Ensure minimum width
+            ctx.lineCap = 'round'; // Smoother branch ends
+            ctx.stroke();
+        }
+
+        // Function to draw a heart shape (leaf)
+        function drawHeart(leaf) {
+            const x = leaf.x;
+            const y = leaf.y;
+            const size = leaf.size;
+            ctx.fillStyle = leaf.color;
+            ctx.beginPath();
+            // Bezier curves for heart shape
+            ctx.moveTo(x, y + size / 4);
+            ctx.bezierCurveTo(x, y, x - size / 2, y, x - size / 2, y + size / 4);
+            ctx.bezierCurveTo(x - size / 2, y + size / 2, x, y + size / 1.5, x, y + size);
+            ctx.bezierCurveTo(x, y + size / 1.5, x + size / 2, y + size / 2, x + size / 2, y + size / 4);
+            ctx.bezierCurveTo(x + size / 2, y, x, y, x, y + size / 4);
+            ctx.fill();
+            ctx.closePath();
+        }
+
+
+        // --- Growth Logic (Synchronous) ---
+
+        // Recursive function to generate branches and leaves data
+        function growTree(x, y, angle, length, depth, lineWidth) {
+            if (depth > MAX_DEPTH || length < 2) return; // Stop if too deep or too short
+
+            // Calculate end point of the current branch
+            const endX = x + Math.cos(angle) * length;
+            const endY = y + Math.sin(angle) * length;
+
+            // Add branch segment to the drawing queue
+            branchesToDraw.push({ x1: x, y1: y, x2: endX, y2: endY, width: lineWidth, depth: depth });
+
+            // Calculate properties for the next branches
+            const newLength = length * BRANCH_LENGTH_FACTOR;
+            const newLineWidth = lineWidth * BRANCH_WIDTH_FACTOR;
+
+            // Exponential leaf growth: Increase probability with depth
+            const currentLeafSpawnProbability = INITIAL_LEAF_SPAWN_PROBABILITY + depth * LEAF_SPAWN_PROBABILITY_INCREASE;
+
+            // Randomly decide to add leaves at the end of this branch
+            if (depth > 2 && Math.random() < currentLeafSpawnProbability) {
+                 // Add multiple leaves for exponential feel
+                const numLeaves = Math.floor(Math.random() * (depth / 1.5)) + 1; // More leaves at deeper levels
+                for (let i = 0; i < numLeaves; i++) {
+                    const leafColor = LEAF_COLORS[Math.floor(Math.random() * LEAF_COLORS.length)];
+                    // Add slight offset to leaf position relative to branch end
+                    const offsetX = (Math.random() - 0.5) * length * 0.4;
+                    const offsetY = (Math.random() - 0.5) * length * 0.4;
+                     leavesToDraw.push({ x: endX + offsetX, y: endY + offsetY, size: HEART_SIZE + Math.random() * 3, color: leafColor, depth: depth });
+                }
+            }
+
+            // Create two new branches recursively (SYNCHRONOUSLY)
+            const angle1 = angle - (Math.random() * ANGLE_VARIATION + ANGLE_VARIATION * 0.1); // Ensure some split, add base split
+            const angle2 = angle + (Math.random() * ANGLE_VARIATION + ANGLE_VARIATION * 0.1); // Ensure some split, add base split
+
+            growTree(endX, endY, angle1, newLength, depth + 1, newLineWidth);
+            growTree(endX, endY, angle2, newLength, depth + 1, newLineWidth);
+        }
+
+        // --- Animation Loop ---
+
+        function animate(timestamp) {
+            if (!drawingInProgress) return; // Stop if animation was cancelled
+
+            // Calculate elapsed time since last frame
+            const deltaTime = (timestamp - lastTimestamp) / 1000; // Time in seconds
+            lastTimestamp = timestamp;
+            timeAccumulator += deltaTime;
+
+            // Calculate how many elements should be drawn based on elapsed time
+            const elementsToDrawThisFrame = Math.floor(timeAccumulator * ELEMENTS_PER_SECOND);
+
+            if (elementsToDrawThisFrame > 0) {
+                timeAccumulator -= elementsToDrawThisFrame / ELEMENTS_PER_SECOND; // Reduce accumulator
+
+                // Draw the calculated number of elements
+                for (let i = 0; i < elementsToDrawThisFrame && elementsDrawn < totalElements; i++) {
+                    // Alternate between drawing branches and leaves based on their sorted order
+                    // This assumes branches and leaves are interleaved correctly after sorting
+                    // A simpler approach: draw all branches first, then all leaves?
+                    // Let's stick to the combined sorted approach for now.
+
+                    // Determine if the next element is a branch or leaf
+                    const nextBranch = branchesToDraw[0]; // Peek at next branch
+                    const nextLeaf = leavesToDraw[0];   // Peek at next leaf
+
+                    // Draw whichever element comes next based on depth (and existence)
+                    if (nextBranch && (!nextLeaf || nextBranch.depth <= nextLeaf.depth)) {
+                        drawBranch(branchesToDraw.shift()); // Draw and remove from array
+                    } else if (nextLeaf) {
+                        drawHeart(leavesToDraw.shift()); // Draw and remove from array
+                    }
+                    elementsDrawn++;
+                }
+            }
+
+            // Stop when everything is drawn
+            if (elementsDrawn >= totalElements) {
+                console.log("Animation finished");
+                drawingInProgress = false;
+                animationFrameId = null; // Clear ID
+                return; // Exit animation loop
+            }
+
+            // Request next frame
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // --- Initialization and Control ---
+        function startAnimation() {
+            // Stop any existing animation
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            drawingInProgress = false; // Reset flag
+
+            // Clear previous drawing data
+            branchesToDraw = [];
+            leavesToDraw = [];
+            elementsDrawn = 0;
+            timeAccumulator = 0;
+            lastTimestamp = performance.now(); // Use performance.now() for higher precision
+
+
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Set initial parameters
+            const startX = canvas.width / 2;
+            const startY = canvas.height; // Start from bottom center
+            const initialAngle = -Math.PI / 2; // Point straight up
+            const initialLength = canvas.height * INITIAL_BRANCH_LENGTH_FACTOR; // Base length on canvas height
+
+            // Generate all tree data synchronously
+            console.log("Generating tree data...");
+            growTree(startX, startY, initialAngle, initialLength, 0, 12); // Initial lineWidth 12
+
+            // Sort branches and leaves by depth - crucial for drawing order
+            // Combine and sort might be better for the drawing loop logic
+            let allElements = [
+                ...branchesToDraw.map(b => ({ ...b, type: 'branch' })),
+                ...leavesToDraw.map(l => ({ ...l, type: 'leaf' }))
+            ];
+            allElements.sort((a, b) => a.depth - b.depth);
+
+            // Separate back into branches and leaves AFTER sorting (for the drawing loop logic)
+            // This keeps the drawing loop simpler if we draw branches first up to a depth, then leaves.
+            // Let's try drawing interleaved based on depth.
+            branchesToDraw.sort((a, b) => a.depth - b.depth);
+            leavesToDraw.sort((a, b) => a.depth - b.depth);
+
+
+            totalElements = branchesToDraw.length + leavesToDraw.length;
+
+            if (totalElements === 0) {
+                console.warn("No elements generated for the tree.");
+                return;
+            }
+
+            // Start the animation loop
+            drawingInProgress = true;
+            console.log(`Starting animation with ${branchesToDraw.length} branches and ${leavesToDraw.length} leaves.`);
+            animationFrameId = requestAnimationFrame(animate);
+        }
+
+        // --- Event Listeners ---
+        window.addEventListener('resize', resizeCanvas);
+        restartButton.addEventListener('click', startAnimation);
+
+        // --- Initial Setup ---
+        // Call resizeCanvas initially which also calls startAnimation
+        resizeCanvas();
+
+    </script>
 </body>
 </html>
-
