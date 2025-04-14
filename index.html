@@ -1,11 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <audio autoplay loop>
-      <source src="/aud.mp3" type="audio/mpeg">
-      Your browser does not support the audio element.
-    </audio>
-<meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Animated Circle</title>
     <style>
@@ -14,6 +9,10 @@
     </style>
 </head>
 <body>
+    <audio autoplay hidden>
+  <source src="aud.mp3" type="audio/mpeg">
+  Your browser does not support the audio element.
+    </audio>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
       <defs>
         <radialGradient id="circleGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
