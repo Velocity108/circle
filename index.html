@@ -1,58 +1,149 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scrolling Text Effect</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body class="bg-gray-100 text-gray-800">
-    <header>
-      <h1 class="fluid">you can<br />scroll.</h1>
-    </header>
-
-    <main>
-      <section class="content fluid">
-        <h2><span aria-hidden="true">you can&nbsp;</span>
-          <span class="sr-only">you can ship things.</span>
-        </h2>
-        <ul aria-hidden="true" style="--count: 22">
-          <li style="--i: 0">design.</li>
-          <li style="--i: 1">prototype.</li>
-          <li style="--i: 2">solve.</li>
-          <li style="--i: 3">build.</li>
-          <li style="--i: 4">develop.</li>
-          <li style="--i: 5">debug.</li>
-          <li style="--i: 6">learn.</li>
-          <li style="--i: 7">cook.</li>
-          <li style="--i: 8">ship.</li>
-          <li style="--i: 9">prompt.</li>
-          <li style="--i: 10">collaborate.</li>
-          <li style="--i: 11">create.</li>
-          <li style="--i: 12">inspire.</li>
-          <li style="--i: 13">follow.</li>
-          <li style="--i: 14">innovate.</li>
-          <li style="--i: 15">test.</li>
-          <li style="--i: 16">optimize.</li>
-          <li style="--i: 17">teach.</li>
-          <li style="--i: 18">visualize.</li>
-          <li style="--i: 19">transform.</li>
-          <li style="--i: 20">scale.</li>
-          <li style="--i: 21">do it.</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2 class="fluid">fin.</h2>
-      </section>
-    </main>
-
-    <footer>ʕ⊙ᴥ⊙ʔ jh3yy &copy; 2024</footer>
-
-    <script src="script.js"></script>
-</body>
-</html>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <defs>
+    <radialGradient id="circleGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+      <stop offset="0%" stop-color="#ff5e00" />
+      <stop offset="70%" stop-color="#8c1eff" />
+      <stop offset="100%" stop-color="#3f0066" />
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <filter id="turbulence" x="-50%" y="-50%" width="200%" height="200%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="5" seed="2" result="noise" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </defs>
+  
+  <style>
+    @keyframes draw-circle {
+      0% { stroke-dashoffset: 628; stroke-width: 2; }
+      50% { stroke-width: 20; }
+      100% { stroke-dashoffset: 0; stroke-width: 15; }
+    }
+    
+    @keyframes rotate {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes fade-in {
+      0% { opacity: 0; }
+      70% { opacity: 0; }
+      100% { opacity: 0.7; }
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(0.95); filter: brightness(0.8); }
+      50% { transform: scale(1.05); filter: brightness(1.2); }
+      100% { transform: scale(0.95); filter: brightness(0.8); }
+    }
+    
+    @keyframes particle-float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-15px) rotate(180deg); }
+    }
+    
+    @keyframes spark {
+      0% { opacity: 0; transform: scale(0); }
+      20% { opacity: 1; transform: scale(1.5); }
+      40% { opacity: 0.8; transform: scale(1); }
+      100% { opacity: 0; transform: scale(0); }
+    }
+    
+    .circle {
+      fill: none;
+      stroke: url(#circleGradient);
+      stroke-width: 15;
+      stroke-linecap: round;
+      stroke-dasharray: 628;
+      stroke-dashoffset: 628;
+      filter: url(#glow);
+      animation: 
+        draw-circle 3s cubic-bezier(0.25, 0.1, 0.25, 1) forwards,
+        pulse 4s ease-in-out infinite 3s;
+    }
+    
+    .outer-ring {
+      fill: none;
+      stroke: rgba(255, 94, 0, 0.2);
+      stroke-width: 5;
+      opacity: 0;
+      animation: fade-in 2s ease-in-out forwards 2s, rotate 20s linear infinite;
+    }
+    
+    .inner-ring {
+      fill: none;
+      stroke: rgba(140, 30, 255, 0.3);
+      stroke-width: 8;
+      opacity: 0;
+      animation: fade-in 2s ease-in-out forwards 2.5s, rotate 15s linear infinite reverse;
+    }
+    
+    .circle-fill {
+      fill: url(#circleGradient);
+      opacity: 0;
+      filter: url(#turbulence);
+      animation: fade-in 3s ease-in-out forwards 2s, pulse 8s ease-in-out infinite 3s;
+    }
+    
+    .particle {
+      animation: particle-float 8s ease-in-out infinite;
+      animation-delay: calc(var(--delay) * 1s);
+      opacity: 0;
+      animation-fill-mode: forwards;
+    }
+    
+    .spark {
+      fill: white;
+      animation: spark 1.5s ease-in-out infinite;
+      animation-delay: calc(var(--delay) * 1s);
+    }
+    
+    .background {
+      fill: #120021;
+      animation: pulse 10s ease-in-out infinite alternate;
+    }
+  </style>
+  
+  <rect class="background" width="400" height="400" />
+  
+  <g transform="translate(200, 200)">
+    <!-- Outer decorative rings -->
+    <circle class="outer-ring" cx="0" cy="0" r="140" />
+    <circle class="inner-ring" cx="0" cy="0" r="120" />
+    
+    <!-- Particles -->
+    <g>
+      <circle class="particle" style="--delay: 1.0" cx="-90" cy="-90" r="8" fill="#ff5e00" opacity="0">
+        <animate attributeName="opacity" values="0;0.8;0" dur="7s" begin="1s" repeatCount="indefinite" />
+      </circle>
+      <circle class="particle" style="--delay: 1.5" cx="100" cy="-70" r="6" fill="#8c1eff" opacity="0">
+        <animate attributeName="opacity" values="0;0.7;0" dur="6s" begin="1.5s" repeatCount="indefinite" />
+      </circle>
+      <circle class="particle" style="--delay: 2.0" cx="90" cy="80" r="9" fill="#ff5e00" opacity="0">
+        <animate attributeName="opacity" values="0;0.9;0" dur="8s" begin="2s" repeatCount="indefinite" />
+      </circle>
+      <circle class="particle" style="--delay: 2.5" cx="-60" cy="100" r="7" fill="#8c1eff" opacity="0">
+        <animate attributeName="opacity" values="0;0.8;0" dur="7s" begin="2.5s" repeatCount="indefinite" />
+      </circle>
+      <circle class="particle" style="--delay: 3.0" cx="-100" cy="40" r="5" fill="#ff5e00" opacity="0">
+        <animate attributeName="opacity" values="0;0.7;0" dur="6s" begin="3s" repeatCount="indefinite" />
+      </circle>
+      <path class="particle" style="--delay: 3.5" d="M50,-100 L55,-90 L65,-95 Z" fill="#8c1eff" opacity="0">
+        <animate attributeName="opacity" values="0;0.8;0" dur="7s" begin="3.5s" repeatCount="indefinite" />
+      </path>
+      <path class="particle" style="--delay: 4.0" d="M0,110 L10,120 L-10,120 Z" fill="#ff5e00" opacity="0">
+        <animate attributeName="opacity" values="0;0.9;0" dur="8s" begin="4s" repeatCount="indefinite" />
+      </path>
+      <path class="particle" style="--delay: 4.5" d="M-110,0 L-100,10 L-100,-10 Z" fill="#8c1eff" opacity="0">
+        <animate attributeName="opacity" values="0;0.7;0" dur="6s" begin="4.5s" repeatCount="indefinite" />
+      </path>
+    </g>
+    
+    <!-- Sparks along the circle path -->
+    <g>
+      <circle class="spark" style="--delay: 0.2" cx="0" cy="-100" r="3" />
+      <circle class="spark" style="--delay: 0.4" cx="71" cy="-71" r="2" />
+      <circle class="spark" style="--delay: 0.6" cx="100" cy="0" r="3" />
+      <circle class="spark" style="--delay: 0.8" cx="71"
